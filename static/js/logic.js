@@ -1,21 +1,41 @@
-const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
-// const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson";
+// const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
+const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson";
 
+// boundaries JSON
+// const urlBoundaries = "https://github.com/fraxen/tectonicplates/blob/master/GeoJSON/PB2002_boundaries.json";
+
+// define so they are only calculated once, as they can noticeably slow down page load
 let gradientColors = ["#B6FFC2", "#59C0ED", "#0065B2", "#761DAD", "#CD3300"];
-let allDepths;
 let colorDomain;
 let chromaScale;
+// let plateBoundaries;
 
 d3.json(url).then(data => {
-    allDepths = getDepths(data.features);
-    // console.log(Math.max(...allDepths));
-    // console.log(chroma.limits(allDepths, 'l', 4));
+    // loadBoundariesJSON();
+    let allDepths = getDepths(data.features);
     colorDomain = chroma.limits(allDepths, 'l', gradientColors.length - 1);
     chromaScale = chroma.scale(gradientColors).domain(colorDomain);
     createEarthquakeFeatures(data.features);
 });
 
 
+// function loadBoundariesJSON() {
+//     d3.json(urlBoundaries).then(data => {
+//         console.log(data);
+//         plateBoundaries = L.geoJSON(data);
+//     });
+// }
+
+
+/**
+ * Function to create an array for all depths in the earthquake data
+ * 
+ * NOTE: Because a logarithmic scale is used for the depth color,
+ *  values > 0 are not valid and are instead converted to 0.0001
+ * 
+ * @param {any} features geoJSON features
+ * @returns Array of numbers
+ */
 function getDepths(features) {
     let depths = []
     features.forEach(element => {
@@ -52,7 +72,6 @@ function _pointToLayer(feature, latLong) {
     })
 }
 
-
 function createEarthquakeFeatures(earthquakeData) {
     let earthquakes = L.geoJSON(earthquakeData,
         {onEachFeature: _addPopup,
@@ -77,15 +96,7 @@ function createLegend() {
             htmlLI.push("<li>" + formattedValue + "</li>");
         });
 
-        // create list of css hex colors
-        // let cssGradient = [];
-        // chromaScale.forEach(color => {
-        //     cssGradient.push(color.hex());
-        // });
-        // let cssGradient = gradientColors.join(", ");
-
-        console.log(htmlLI);
-        // console.log(cssGradient);
+        // create the HTML for the legend
         div.innerHTML = `<h3 class="legend_title">Depth (km)</h3>
                         <div class="data_container">
                             <div class="gradient" style="background: linear-gradient(${gradientColors.join(", ")})"></div>
@@ -124,7 +135,8 @@ function createMap(earthquakes) {
     };
 
     let overlayMaps = {
-        Earthquakes: earthquakes
+        Earthquakes: earthquakes,
+        // "Plate Boundaries": plateBoundaries
     };
 
     // create the map

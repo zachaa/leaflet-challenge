@@ -21,13 +21,13 @@ html {
 }
 
 .data_container{
-  height: 12em;
+  height: 18em;
 }
 
 .gradient{
   width: 2em;
   height: calc(100% - 1em);
-  background: linear-gradient(#B6FFC2, #59C0ED, #0065B2, #761DAD, #CD3300);
+  /* background: linear-gradient(#B6FFC2, #59C0ED, #0065B2, #761DAD, #CD3300); */
   float: left;
   margin: 0.5em 0em 0.5em 0em;
 }
@@ -44,12 +44,13 @@ html {
 
 .legend ul {
   height: 100%;
+  font-size: 14px;
+  margin: 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  margin: 0;
 }
 
 .legend li {
