@@ -1,30 +1,50 @@
-// const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
-const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson";
+const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
+// const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson";
 
-// boundaries JSON
-// const urlBoundaries = "https://github.com/fraxen/tectonicplates/blob/master/GeoJSON/PB2002_boundaries.json";
+// boundaries JSON (also in /data/)
+const urlBoundaries = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json";
 
 // define so they are only calculated once, as they can noticeably slow down page load
 let gradientColors = ["#B6FFC2", "#59C0ED", "#0065B2", "#761DAD", "#CD3300"];
 let colorDomain;
 let chromaScale;
-// let plateBoundaries;
 
-d3.json(url).then(data => {
-    // loadBoundariesJSON();
-    let allDepths = getDepths(data.features);
+// function init() {
+//     let earthquakeFeatures;
+//     let plateBoundaryFeatures;
+
+//     d3.json(url).then(data => {
+//         let allDepths = getDepths(data.features);
+//         colorDomain = chroma.limits(allDepths, 'l', gradientColors.length - 1);
+//         chromaScale = chroma.scale(gradientColors).domain(colorDomain);
+//         earthquakeFeatures = createEarthquakeFeatures(data.features);
+//     });
+
+//     // d3.json(urlBoundaries).then(data => {
+//     //     console.log(data);
+//     //     plateBoundaryFeatures = L.geoJSON(data);
+//     // });
+
+//     createMap(earthquakeFeatures, plateBoundaryFeatures);
+// }
+
+async function init() {
+    let earthquakeData = await d3.json(url);
+    let plateBoundaryData = await d3.json(urlBoundaries);
+
+    // set Color Values
+    let allDepths = getDepths(earthquakeData.features);
     colorDomain = chroma.limits(allDepths, 'l', gradientColors.length - 1);
     chromaScale = chroma.scale(gradientColors).domain(colorDomain);
-    createEarthquakeFeatures(data.features);
-});
 
+    // create Part 1 Main features
+    let earthquakeFeatures = createEarthquakeFeatures(earthquakeData.features);
+    
+    // create Part 2 BONUS features
+    let plateBoundaryFeatures = createPlateBoundaryFeatures(plateBoundaryData);
 
-// function loadBoundariesJSON() {
-//     d3.json(urlBoundaries).then(data => {
-//         console.log(data);
-//         plateBoundaries = L.geoJSON(data);
-//     });
-// }
+    createMap(earthquakeFeatures, plateBoundaryFeatures);
+}
 
 
 /**
@@ -77,8 +97,14 @@ function createEarthquakeFeatures(earthquakeData) {
         {onEachFeature: _addPopup,
          pointToLayer: _pointToLayer,
         });
-    
-    createMap(earthquakes);
+    return earthquakes
+}
+
+function createPlateBoundaryFeatures(plateBoundaryData) {
+    let boundaries = L.geoJSON(plateBoundaryData,
+        {color: "#ffae00",  // gold-yellow
+        });
+    return boundaries;
 }
 
 
@@ -112,7 +138,7 @@ function createLegend() {
 }
 
 
-function createMap(earthquakes) {
+function createMap(earthquakes, plateBoundaries) {
     // For tile map options see: https://leaflet-extras.github.io/leaflet-providers/preview/
     let esriGray = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
@@ -136,7 +162,7 @@ function createMap(earthquakes) {
 
     let overlayMaps = {
         Earthquakes: earthquakes,
-        // "Plate Boundaries": plateBoundaries
+        "Plate Boundaries": plateBoundaries
     };
 
     // create the map
@@ -157,3 +183,5 @@ function createMap(earthquakes) {
     let legend = createLegend();
     legend.addTo(earthquakeMap);
 }
+
+init();
