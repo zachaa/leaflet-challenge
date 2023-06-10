@@ -14,25 +14,25 @@ html {
   font-family: Arial, Helvetica, sans-serif;
   font-weight: bold;
   padding: 2px 8px;
-  background: rgba(255,255,255,0.8);
-  box-shadow: 0 0 15px rgba(0,0,0,0.2);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
   border-radius: 5px;
   border: 1px solid #555;
 }
 
-.data_container{
-  height: 18em;
+.data_container {
+  height: 20em;
 }
 
-.gradient{
+.gradient {
   width: 2em;
   height: calc(100% - 1em);
-  /* background: linear-gradient(#B6FFC2, #59C0ED, #0065B2, #761DAD, #CD3300); */
   float: left;
   margin: 0.5em 0em 0.5em 0em;
+  border: 1px solid black;
 }
 
-.gradient_values{
+.gradient_values {
   height: 100%;
 }
 
@@ -44,7 +44,7 @@ html {
 
 .legend ul {
   height: 100%;
-  font-size: 14px;
+  font-size: 16px;
   margin: 0;
   padding: 0;
   list-style: none;

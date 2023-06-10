@@ -1,46 +1,33 @@
-const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
-// const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson";
+// Earthquake geoJSON (week or month)
+// const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
+const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson";
 
-// boundaries JSON (also in /data/)
+// Boundaries geoJSON (also in /data/)
 const urlBoundaries = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json";
 
 // define so they are only calculated once, as they can noticeably slow down page load
-let gradientColors = ["#B6FFC2", "#59C0ED", "#0065B2", "#761DAD", "#CD3300"];
+let gradientColors = ["#FCFFA3", "#A3FFB3", "#4EC2C6", "#1823C6", "#9F14C6", "#B80000"];
 let colorDomain;
 let chromaScale;
 
-// function init() {
-//     let earthquakeFeatures;
-//     let plateBoundaryFeatures;
-
-//     d3.json(url).then(data => {
-//         let allDepths = getDepths(data.features);
-//         colorDomain = chroma.limits(allDepths, 'l', gradientColors.length - 1);
-//         chromaScale = chroma.scale(gradientColors).domain(colorDomain);
-//         earthquakeFeatures = createEarthquakeFeatures(data.features);
-//     });
-
-//     // d3.json(urlBoundaries).then(data => {
-//     //     console.log(data);
-//     //     plateBoundaryFeatures = L.geoJSON(data);
-//     // });
-
-//     createMap(earthquakeFeatures, plateBoundaryFeatures);
-// }
-
+// `async` function because I was having trouble with loading the plate data with d3.json().then()
+// not finishing reading while the original data was trying to make the map, causing an error
+// with the layers. So instead, I await for both files to load, then create the features.
+/** Starting function, loads the data, calculates the depth gradient */
 async function init() {
     let earthquakeData = await d3.json(url);
     let plateBoundaryData = await d3.json(urlBoundaries);
 
     // set Color Values
     let allDepths = getDepths(earthquakeData.features);
-    colorDomain = chroma.limits(allDepths, 'l', gradientColors.length - 1);
+    console.log("Total Earthquakes", allDepths.length);
+    colorDomain = chroma.limits(allDepths, 'l', gradientColors.length - 1);  // logarithmic
     chromaScale = chroma.scale(gradientColors).domain(colorDomain);
 
     // create Part 1 Main features
     let earthquakeFeatures = createEarthquakeFeatures(earthquakeData.features);
     
-    // create Part 2 BONUS features
+    // create Part 2 OPTIONAL features
     let plateBoundaryFeatures = createPlateBoundaryFeatures(plateBoundaryData);
 
     createMap(earthquakeFeatures, plateBoundaryFeatures);
@@ -51,7 +38,7 @@ async function init() {
  * Function to create an array for all depths in the earthquake data
  * 
  * NOTE: Because a logarithmic scale is used for the depth color,
- *  values > 0 are not valid and are instead converted to 0.0001
+ *  values > 0 are not valid and are instead converted to 0.01
  * 
  * @param {any} features geoJSON features
  * @returns Array of numbers
@@ -60,28 +47,42 @@ function getDepths(features) {
     let depths = []
     features.forEach(element => {
         let value = element.geometry.coordinates[2];
-        depths.push(value > 0 ? value : 0.001);
+        depths.push(value > 0 ? value : 0.01);
     });
     return depths;
 }
 
-
+/**
+ * Gives a color for a given depth. Values >= 0 are the same color as 0.001
+ * @param {number} depth 
+ * @returns hex color string
+ */
 function colorDepth(depth) {
     return chromaScale(depth).hex();
 }
 
+/**
+ * Gives the radius to use given a magnitude number.
+ */
 function radiusMagnitude(magnitude) {
     return magnitude * 4;
 }
 
+/**
+ * Adds a popup to a layer (each earthquake) containing the location, depth, magnitude, and date-time
+ */
 function _addPopup(feature, layer) {
+    const dateFormat = new Intl.DateTimeFormat("en-us", {dateStyle: "medium", timeStyle: "short", timeZone: "UTC"})
     layer.bindPopup(`${feature.properties.place}
                     <hr>
                     Depth: ${feature.geometry.coordinates[2]} km<br>
-                    Magnitude: ${feature.properties.mag}<br>
-                    ${new Date(feature.properties.time).toISOString()} UTC`)
+                    Magnitude: ${feature.properties.mag}<hr>
+                    ${dateFormat.format(new Date(feature.properties.time))} UTC`)
 }
 
+/**
+ * Converts the geoJSON point to a circleMarker layer.
+ */
 function _pointToLayer(feature, latLong) {
     return L.circleMarker(latLong, {
         color: colorDepth(feature.geometry.coordinates[2]),
@@ -92,6 +93,7 @@ function _pointToLayer(feature, latLong) {
     })
 }
 
+/** Creates the earthquake markers layer for the map */
 function createEarthquakeFeatures(earthquakeData) {
     let earthquakes = L.geoJSON(earthquakeData,
         {onEachFeature: _addPopup,
@@ -100,14 +102,16 @@ function createEarthquakeFeatures(earthquakeData) {
     return earthquakes
 }
 
+/** Creates the optional plate boundary layer for the map */
 function createPlateBoundaryFeatures(plateBoundaryData) {
     let boundaries = L.geoJSON(plateBoundaryData,
-        {color: "#ffae00",  // gold-yellow
+        {color: "#fccf03",  // gold-yellow
         });
     return boundaries;
 }
 
 
+/** Create the legend for the depth of the earthquakes */
 function createLegend() {
     let legend = L.control({position: "bottomright"});
 
@@ -117,8 +121,8 @@ function createLegend() {
         // create list of html <li> elements with scale values
         let htmlLI = []
         colorDomain.forEach((value, index) => {
-            // smallest value is slightly greater than 0, so we will display it as 0.00 +
-            let formattedValue = index == 0 ? "0.00 +" : value.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+            // smallest value is slightly greater than 0, so we will display it as 0.01 +
+            let formattedValue = index == 0 ? "0.01 +" : value.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
             htmlLI.push("<li>" + formattedValue + "</li>");
         });
 
@@ -138,6 +142,7 @@ function createLegend() {
 }
 
 
+/** Creates the map and adds the base & overlay layers and the legend */
 function createMap(earthquakes, plateBoundaries) {
     // For tile map options see: https://leaflet-extras.github.io/leaflet-providers/preview/
     let esriGray = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
@@ -150,14 +155,24 @@ function createMap(earthquakes, plateBoundaries) {
     })
 
     let USGS_USImagery = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 20,
+        maxZoom: 16,
         attribution: 'Tiles courtesy of the <a href="https://usgs.gov/">U.S. Geological Survey</a>'
+    });
+
+    let NASAGIBS_ViirsEarthAtNight2012 = L.tileLayer('https://map1.vis.earthdata.nasa.gov/wmts-webmerc/VIIRS_CityLights_2012/default/{time}/{tilematrixset}{maxZoom}/{z}/{y}/{x}.{format}', {
+        attribution: 'Imagery provided by services from the Global Imagery Browse Services (GIBS), operated by the NASA/GSFC/Earth Science Data and Information System (<a href="https://earthdata.nasa.gov">ESDIS</a>) with funding provided by NASA/HQ.',
+        minZoom: 1,
+        maxZoom: 8,
+        format: 'jpg',
+        time: '',
+        tilematrixset: 'GoogleMapsCompatible_Level'
     });
 
     let baseMaps = {
         Base: esriGray,
         Streets: street,
-        Satellite: USGS_USImagery
+        Satellite: USGS_USImagery,
+        Night: NASAGIBS_ViirsEarthAtNight2012,
     };
 
     let overlayMaps = {
@@ -172,6 +187,10 @@ function createMap(earthquakes, plateBoundaries) {
         layers: [esriGray, earthquakes]
     });
 
+    // Boundary lines to make clear where the edge of the map with data is
+    L.polyline([[-85,180],[85,180]], {color: "#ddd"}).addTo(earthquakeMap);
+    L.polyline([[-85,-180],[85,-180]], {color: "#ddd"}).addTo(earthquakeMap);
+
     // add the layers
     L.control.layers(
         baseMaps,
@@ -184,4 +203,5 @@ function createMap(earthquakes, plateBoundaries) {
     legend.addTo(earthquakeMap);
 }
 
+// run the init function to start map creation
 init();
