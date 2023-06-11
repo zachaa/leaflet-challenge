@@ -6,13 +6,15 @@ const url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month
 const urlBoundaries = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json";
 
 // define so they are only calculated once, as they can noticeably slow down page load
-let gradientColors = ["#FCFFA3", "#A3FFB3", "#4EC2C6", "#1823C6", "#9F14C6", "#B80000"];
+let gradientColors = ["#FFF769", "#87FF9C", "#34C4C9", "#1823C6", "#9F06C9", "#B80000"];
 let colorDomain;
 let chromaScale;
 
 // `async` function because I was having trouble with loading the plate data with d3.json().then()
 // not finishing reading while the original data was trying to make the map, causing an error
 // with the layers. So instead, I await for both files to load, then create the features.
+// I suppose I could have done d3.json(url_1).then(data_1 => {d3.json(url_2).then(data_2 => {})})
+// but that is not as readable.
 /** Starting function, loads the data, calculates the depth gradient */
 async function init() {
     let earthquakeData = await d3.json(url);
@@ -54,7 +56,7 @@ function getDepths(features) {
 
 /**
  * Gives a color for a given depth. Values >= 0 are the same color as 0.001
- * @param {number} depth 
+ * @param {number} depth
  * @returns hex color string
  */
 function colorDepth(depth) {
@@ -63,9 +65,17 @@ function colorDepth(depth) {
 
 /**
  * Gives the radius to use given a magnitude number.
+ * 
+ * Values (including negatives) less than 0.5 are given a minimum size of 2
+ *  otherwise values could be too small to click on.
+ * @param {number} magnitude
  */
 function radiusMagnitude(magnitude) {
-    return magnitude * 4;
+    if (magnitude < 0.5) {
+        return 2;
+    } else {
+        return magnitude * 4;
+    }
 }
 
 /**
@@ -87,7 +97,7 @@ function _pointToLayer(feature, latLong) {
     return L.circleMarker(latLong, {
         color: colorDepth(feature.geometry.coordinates[2]),
         fillColor: colorDepth(feature.geometry.coordinates[2]),
-        fillOpacity: 0.75,
+        fillOpacity: 0.8,
         stroke: false,
         radius: radiusMagnitude(feature.properties.mag),
     })
@@ -105,7 +115,7 @@ function createEarthquakeFeatures(earthquakeData) {
 /** Creates the optional plate boundary layer for the map */
 function createPlateBoundaryFeatures(plateBoundaryData) {
     let boundaries = L.geoJSON(plateBoundaryData,
-        {color: "#fccf03",  // gold-yellow
+        {color: "#ff6e00",  // orange
         });
     return boundaries;
 }
